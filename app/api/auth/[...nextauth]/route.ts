@@ -24,14 +24,11 @@ const handler = NextAuth({
           throw new Error("User not found");
         }
 
-        console.log("USER", user)
-        console.log("FRONTEND PASS", credentials.password)
 
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
-        console.log("IS VALID", isValid)
 
         if (!isValid) {
           throw new Error("Invalid credentials");

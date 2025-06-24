@@ -18,18 +18,15 @@ export default function Page() {
       } catch (error) {
         console.error("Error fetching users:", error);
       } finally {
-        setLoading(false); 
+        setLoading(false);
       }
     };
     fetchData();
-    
   }, []);
-
-  console.log(moderationData)
 
   return (
     <div className="p-4 w-full h-full">
-      <h1 className="text-xl font-semibold mb-4">Users</h1>
+      <h1 className="text-xl font-semibold mb-4">Moderations</h1>
 
       {loading ? (
         <div className="space-y-4">
