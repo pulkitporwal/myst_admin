@@ -33,15 +33,9 @@ import { AdminUserType, columns, ROLE } from "./columns";
 
 type UserTableProps = {
   data: AdminUserType[];
-  currentUserRole: ROLE;
-  onRoleChange: (id: string, newRole: ROLE) => void;
 };
 
-export function UserTable({
-  data,
-  currentUserRole,
-  onRoleChange,
-}: UserTableProps) {
+export function AdminUserTable({ data }: UserTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
@@ -49,14 +43,9 @@ export function UserTable({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
 
-  const columnDefs = React.useMemo(
-    () => columns(currentUserRole, onRoleChange),
-    [currentUserRole, onRoleChange]
-  );
-
   const table = useReactTable({
     data,
-    columns: columnDefs,
+    columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
@@ -75,12 +64,12 @@ export function UserTable({
     <div className="w-full overflow-hidden">
       <div className="flex items-center py-4">
         <Input
-          placeholder="Search username..."
+          placeholder="Search fullName..."
           value={
-            (table.getColumn("username")?.getFilterValue() as string) ?? ""
+            (table.getColumn("fullName")?.getFilterValue() as string) ?? ""
           }
           onChange={(event) =>
-            table.getColumn("username")?.setFilterValue(event.target.value)
+            table.getColumn("fullName")?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />

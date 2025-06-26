@@ -24,6 +24,8 @@ export default function Page() {
     fetchData();
   }, []);
 
+  console.log(userData)
+
   return (
     <div className="p-4 w-full h-full">
       <h1 className="text-xl font-semibold mb-4">Users</h1>

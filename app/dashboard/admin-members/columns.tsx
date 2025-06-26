@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminUserProfileSheet } from "@/components/admin-user-profile-sheet";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
@@ -9,16 +10,15 @@ import React from "react";
 export type ROLE = "super-admin" | "admin" | "manager";
 
 export type AdminUserType = {
-  id: string;
+  _id: string;
   fullName: string;
   email: string;
   role: ROLE;
 };
 
-export const columns = (
-  currentUserRole: ROLE,
-  onRoleChange: (id: string, newRole: ROLE) => void
-): ColumnDef<AdminUserType>[] => [
+
+
+export const columns: ColumnDef<AdminUserType>[] = [
   {
     accessorKey: "fullName",
     header: ({ column }) => (
@@ -31,6 +31,7 @@ export const columns = (
       </Button>
     ),
   },
+  
   {
     accessorKey: "email",
     header: ({ column }) => (
@@ -43,7 +44,6 @@ export const columns = (
       </Button>
     ),
   },
-
   {
     accessorKey: "role",
     header: ({ column }) => (
@@ -55,21 +55,18 @@ export const columns = (
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) =>
-      currentUserRole === "super-admin" ? (
-        <select
-          className="border rounded px-2 py-1 text-sm"
-          value={row.original.role}
-          onChange={(e) =>
-            onRoleChange(row.original.id, e.target.value as ROLE)
-          }
-        >
-          <option value="super-admin">Super Admin</option>
-          <option value="admin">Admin</option>
-          <option value="manager">Manager</option>
-        </select>
-      ) : (
-        <span>{row.original.role}</span>
-      ),
+    cell: ({row}) => (
+      <div>{row.original.role == "super-admin" ? <div>SUPER ADMIN</div> : row.original.role == "admin" ? <div>ADMIN</div> : row.original.role == "manager" ? <div>MANAGER</div> : <div>ROLE DOESN'T EXIST</div>}</div>
+    )
+  },
+ 
+  {
+    id: "actions",
+    header: "Actions",
+    cell: ({ row }) => (
+      <AdminUserProfileSheet userId={row.original._id} triggerLabel="View" />
+    ),
+    enableSorting: false,
+    enableHiding: false,
   },
 ];

@@ -22,9 +22,34 @@ const AdminUserSchema = new mongoose.Schema(
       enum: ["super-admin", "admin", "manager"],
       default: "manager",
     },
+    permissions: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Permission",
+      },
+    ],
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+    },
+    phoneNumber: {
+      type: String,
+    },
+    profileImage: {
+      type: String,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AdminUser",
+    },
+    notes: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
-export const AdminUser =
-  mongoose.models.AdminUser || mongoose.model("AdminUser", AdminUserSchema);
+export const AdminUser = mongoose.models.AdminUser || mongoose.model("AdminUser", AdminUserSchema);

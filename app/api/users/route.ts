@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
-import "@/models/Interests"; // ✅ force model registration
-import { UserModel } from "@/models/User"; // this uses ref: "Interest"
+import "@/models/Interests"; 
+import { UserModel } from "@/models/User"; 
+import { getCurrentUserWithPermissions } from "@/lib/getCurrentUserWithPermissions";
 
 export async function GET() {
   try {
     await dbConnect();
+    // const detail = await getCurrentUserWithPermissions()
+
+    // console.log(detail)
 
     const users = await UserModel.find(
       { isActive: true },

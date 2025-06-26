@@ -48,30 +48,6 @@ export const columns: ColumnDef<UserType>[] = [
     ),
   },
   {
-    accessorKey: "gender",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Gender
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-  },
-  {
-    accessorKey: "dob",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Date of Birth
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-  },
-  {
     accessorKey: "avatarURL",
     header: "Avatar",
     enableSorting: false,
@@ -94,18 +70,6 @@ export const columns: ColumnDef<UserType>[] = [
     },
   },
   {
-    accessorKey: "mobileNumber",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Mobile Number
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-  },
-  {
     accessorKey: "email",
     header: ({ column }) => (
       <Button
@@ -116,32 +80,6 @@ export const columns: ColumnDef<UserType>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-  },
-  {
-    accessorKey: "is_active",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Active
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (row.original.is_active ? <Check /> : <X />),
-  },
-  {
-    accessorKey: "is_verified",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Verified
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => (row.original.is_verified ? <Check /> : <X />),
   },
   {
     accessorKey: "interestIn",

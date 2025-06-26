@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/dbConnect";
-import ContentModel from "@/models/Content";
 import "@/models/Interests";
+import { dbConnect } from "@/lib/dbConnect";
+import { ContentModel } from "@/models/Content";
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {

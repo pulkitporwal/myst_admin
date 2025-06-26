@@ -7,6 +7,9 @@ import { dbConnect } from "@/lib/dbConnect";
 export async function GET() {
   try {
     await dbConnect();
+
+    UserModel.modelName;
+
     const contents = await ContentModel.find()
       .populate("user_id", "fullName userName avatarURL")
       .populate("category", "interest");
