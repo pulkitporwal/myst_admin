@@ -4,28 +4,27 @@ import { ActivityModel } from "@/models/Activities";
 import { logActivity, ActivityTypes, getClientInfo } from "@/lib/activityLogger";
 import { getCurrentUserWithPermissions } from "@/lib/getCurrentUserWithPermissions";
 import { checkPermission, createPermissionErrorResponse } from "@/lib/checkPermissions";
+import { checkAnyPermission, createAnyPermissionErrorResponse } from "@/lib/checkPermissions";
 
-type Context = {
-  params: {
-    id: string;
-  };
-};
-
-export async function GET(request: Request, { params }: Context) {
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    // Check permission - you can change this to your custom permission name
-    const permissionCheck = await checkPermission("ACTIVITY_VIEW");
+    await dbConnect();
+
+    // Permission check - ACTIVITIES_VIEW or SUPER_ADMIN
+    const permissionCheck = await checkAnyPermission(["ACTIVITIES_VIEW", "SUPER_ADMIN"]);
     if (!permissionCheck.hasPermission) {
       return NextResponse.json(
-        createPermissionErrorResponse("ACTIVITY_VIEW", permissionCheck.permissions),
+        createAnyPermissionErrorResponse(["ACTIVITIES_VIEW", "SUPER_ADMIN"], permissionCheck.permissions),
         { status: 403 }
       );
     }
 
-    await dbConnect();
-    const activity = await ActivityModel.findById(params.id)
-      .populate('userId', 'fullName userName avatarURL');
-    
+    const { id } = await params;
+    const activity = await ActivityModel.findById(id);
+
     if (!activity) {
       return NextResponse.json(
         { success: false, error: "Activity not found" },
@@ -33,22 +32,14 @@ export async function GET(request: Request, { params }: Context) {
       );
     }
 
-    // Log activity viewing
-    const clientInfo = getClientInfo(request);
-    
-    if (permissionCheck.user?._id) {
-      await logActivity({
-        userId: permissionCheck.user._id.toString(),
-        activityType: ActivityTypes.ACTIVITY_VIEWED,
-        description: `Viewed activity: ${activity.activityType}`,
-        metadata: { 
-          activityId: activity._id, 
-          activityType: activity.activityType,
-          targetUserId: activity.userId 
-        },
-        ...clientInfo
-      });
-    }
+    // Log activity
+    await logActivity({
+      userId: permissionCheck.user._id.toString(),
+      activityType: ActivityTypes.ACTIVITY_VIEWED,
+      description: `Viewed activity details: ${activity._id}`,
+      metadata: { activityId: activity._id },
+      ...getClientInfo(request)
+    });
 
     return NextResponse.json({ success: true, data: activity });
   } catch (error) {

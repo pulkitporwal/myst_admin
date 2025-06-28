@@ -122,9 +122,9 @@ export const columns: ColumnDef<ContentType>[] = [
     cell: ({ row }) =>
       row.original.category?.length ? (
         <div className="flex flex-wrap gap-1">
-          {row.original.category.map((cat) => (
+          {row.original.category.map((cat,i) => (
             <span
-              key={cat._id}
+              key={i}
               className="bg-muted text-muted-foreground px-2 py-0.5 rounded text-xs"
             >
               {cat.interest}

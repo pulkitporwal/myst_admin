@@ -3,10 +3,22 @@ import { dbConnect } from "@/lib/dbConnect";
 import { UserModel } from "@/models/User";
 import { ContentModel } from "@/models/Content";
 import { ContentReportModel } from "@/models/ReportContent";
+import { checkAnyPermission, createAnyPermissionErrorResponse } from "@/lib/checkPermissions";
+import { ActivityTypes, getClientInfo, logActivity } from "@/lib/activityLogger";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await dbConnect();
+
+    // Permission check - CONTENT_VIEW or SUPER_ADMIN
+    const permissionCheck = await checkAnyPermission(["CONTENT_VIEW", "SUPER_ADMIN"]);
+    if (!permissionCheck.hasPermission) {
+      return NextResponse.json(
+        createAnyPermissionErrorResponse(["CONTENT_VIEW", "SUPER_ADMIN"], permissionCheck.permissions),
+        { status: 403 }
+      );
+    }
+
     const reports = await ContentReportModel.aggregate([
       {
         $lookup: {
@@ -57,10 +69,22 @@ export async function GET() {
       },
     ]);
 
+    // Log activity
+    await logActivity({
+      userId: permissionCheck.user._id.toString(),
+      activityType: ActivityTypes.ACTIVITY_VIEWED,
+      description: "Viewed moderation reports list",
+      metadata: { count: reports.length },
+      ...getClientInfo(request)
+    });
 
     return NextResponse.json({ success: true, data: reports }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ success: false, error }, { status: 500 });
+    console.error("Error fetching moderation reports:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch moderation reports" },
+      { status: 500 }
+    );
   }
 }
 

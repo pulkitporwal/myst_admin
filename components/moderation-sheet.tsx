@@ -9,26 +9,27 @@ import {
 } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useApi } from "@/hooks/use-api";
+import { TOAST_CONFIGS } from "@/lib/api-utils";
 
 export function ModerationSheet({ reportId, triggerLabel = "View" }) {
   const [open, setOpen] = useState(false);
   const [report, setReport] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
-  const [saving, setSaving] = useState(false);
+  
+  const { loading, get, patch } = useApi();
 
   const fetchReport = async (id) => {
-    setLoading(true);
     setReport(null);
     try {
-      const res = await fetch(`/api/moderation/${id}`);
-      const data = await res.json();
-      setReport(data.data);
-      setStatus(data.data.status);
+      const result = await get(`/api/moderation/${id}`, TOAST_CONFIGS.fetch);
+      if (result.success && result.data) {
+        setReport(result.data);
+        setStatus(result.data.status);
+      }
     } catch (e) {
       setReport(null);
     }
-    setLoading(false);
   };
 
   const handleOpenChange = (isOpen) => {
@@ -37,19 +38,14 @@ export function ModerationSheet({ reportId, triggerLabel = "View" }) {
   };
 
   const handleStatusChange = async (newStatus) => {
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/moderation/${reportId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      const data = await res.json();
-      setReport(data.data);
-      setStatus(data.data.status);
-    } finally {
-      setSaving(false);
-    }
+    const result = await patch(`/api/moderation/${reportId}`, { status: newStatus }, {
+      ...TOAST_CONFIGS.update,
+      successMessage: "Status updated successfully",
+      onSuccess: (data) => {
+        setReport(data);
+        setStatus(data.status);
+      },
+    });
   };
 
   return (
@@ -101,7 +97,7 @@ export function ModerationSheet({ reportId, triggerLabel = "View" }) {
               <select
                 value={status}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                disabled={saving}
+                disabled={loading}
                 className="border rounded px-2 py-1"
               >
                 <option value="pending">Pending</option>

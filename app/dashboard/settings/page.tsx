@@ -33,7 +33,6 @@ export default function SettingsPage() {
 
   
 
-  console.log(settingsInfo);
 
   return (
     <div className="p-6 w-full mx-auto">

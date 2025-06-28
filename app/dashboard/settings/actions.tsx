@@ -1,35 +1,27 @@
+import { api, TOAST_CONFIGS } from "@/lib/api-utils";
+
 export const handleAddPermission = async (permission: {
   name: string;
   description: string;
 }) => {
-  const response = await fetch("/api/permissions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(permission),
+  const result = await api.post("/api/permissions", permission, {
+    ...TOAST_CONFIGS.create,
+    successMessage: "Permission created successfully",
   });
 
-  const { data } = await response.json();
-  return data;
+  return result.data;
 };
 
 export const fetchPermissionSettings = async () => {
-  const response = await fetch("/api/permissions");
-  const { data } = await response.json();
-
-  return data;
+  const result = await api.get("/api/permissions", TOAST_CONFIGS.fetch);
+  return result.data;
 };
 
 export const handleDeletePermission = async (id: string) => {
-  const response = await fetch(`/api/permissions/${id}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ id }),
+  const result = await api.delete(`/api/permissions/${id}`, {
+    ...TOAST_CONFIGS.delete,
+    successMessage: "Permission deleted successfully",
   });
 
-  const { data } = await response.json();
-  return data;
+  return result.data;
 };

@@ -1,7 +1,8 @@
 import React from "react";
 import { SidebarTrigger } from "./ui/sidebar";
 import { Button } from "./ui/button";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Power } from "lucide-react";
+import { signOut } from "next-auth/react";
 
 const AppHeader = () => {
   return (
@@ -11,13 +12,9 @@ const AppHeader = () => {
         <h1 className="text-lg font-semibold">Admin Dashboard</h1>
       </div>
       <div className="flex items-center gap-2">
-        <Button variant="outline" size="sm">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
-        <Button size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          New Action
+        <Button onClick={()=> signOut()} className="cursor-pointer" size="sm">
+          <Power className="h-4 w-4 mr-2" />
+          Logout
         </Button>
       </div>
     </header>

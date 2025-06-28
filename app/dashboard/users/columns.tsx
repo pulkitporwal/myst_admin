@@ -2,27 +2,42 @@
 
 import { Button } from "@/components/ui/button";
 import { UserProfileSheet } from "@/components/user-profile-sheet";
+import { UserAssignmentDialog } from "@/components/user-assignment-dialog";
 import { ColumnDef } from "@tanstack/react-table";
 import { format } from "date-fns";
-import { ArrowUpDown, Check, X } from "lucide-react";
+import { ArrowUpDown, Check, X, UserCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export type UserType = {
   _id: string;
   fullName: string;
   userName: string;
   gender: string;
-  dob: Date;
+  dob: string;
   avatarURL: string;
-  mobileNumber: string;
+  mobileNumber: number;
   email: string;
   bio: string;
-  is_active: boolean;
-  is_verified: boolean;
-  interestIn: string[];
+  isActive: boolean;
+  isVerified: boolean;
+  interestIn: Array<{ interest: string; description?: string }>;
+  posts: number;
+  followers: number;
+  following: number;
+  rockets: number;
   wallet: number;
+  socialLinks: string[];
+  assignedTo?: {
+    _id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  } | null;
+  createdAt: string;
 };
 
-export const columns: ColumnDef<UserType>[] = [
+// Create a function that returns columns based on showAssignButton prop
+export const createColumns = (showAssignButton: boolean = true): ColumnDef<UserType>[] => [
   {
     accessorKey: "fullName",
     header: ({ column }) => (
@@ -82,6 +97,30 @@ export const columns: ColumnDef<UserType>[] = [
     ),
   },
   {
+    accessorKey: "assignedTo",
+    header: "Assigned To",
+    cell: ({ row }) => {
+      const assignment = row.original.assignedTo;
+      
+      if (!assignment) {
+        return (
+          <Badge variant="outline" className="text-xs">
+            Unassigned
+          </Badge>
+        );
+      }
+
+      return (
+        <div className="flex flex-col">
+          <span className="font-medium text-sm">{assignment.fullName}</span>
+          <span className="text-xs text-muted-foreground">
+            {assignment.role} • {assignment.email}
+          </span>
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "interestIn",
     header: ({ column }) => (
       <Button
@@ -126,9 +165,26 @@ export const columns: ColumnDef<UserType>[] = [
     id: "actions",
     header: "Actions",
     cell: ({ row }) => (
-      <UserProfileSheet userId={row.original._id} triggerLabel="View" />
+      <div className="flex gap-2">
+        <UserProfileSheet userId={row.original._id} triggerLabel="View" />
+        {showAssignButton && (
+          <UserAssignmentDialog
+            userId={row.original._id}
+            userName={row.original.userName}
+            currentAssignment={row.original.assignedTo}
+            onAssignmentChange={() => {
+              // Trigger a table refresh by updating the data
+              // This will be handled by the parent component's data fetching
+              window.dispatchEvent(new CustomEvent('refreshUsersTable'));
+            }}
+          />
+        )}
+      </div>
     ),
     enableSorting: false,
     enableHiding: false,
   },
 ];
+
+// Default columns export for backward compatibility
+export const columns = createColumns(true);

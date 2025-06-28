@@ -20,6 +20,7 @@ export interface UserDocument extends Document {
   socialLinks: string[];
   fcmToken?: string;
   referralCode?: string;
+  assignedTo?: mongoose.Types.ObjectId;
   createdAt: Date;
 }
 
@@ -40,14 +41,11 @@ const userSchema = new Schema<UserDocument>(
     isActive: { type: Boolean, default: true },
     isVerified: { type: Boolean, default: false },
     interestIn: [{ type: mongoose.Schema.Types.ObjectId, ref: "Interest" }],
-    posts: { type: Number, default: 0 },
-    followers: { type: Number, default: 0 },
-    following: { type: Number, default: 0 },
-    rockets: { type: Number, default: 0 },
     wallet: { type: Number, default: 100 },
     socialLinks: { type: [String], default: [] },
     referralCode: { type: String },
     fcmToken: { type: String },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: "AdminUser" },
     createdAt: { type: Date, default: Date.now },
   },
   {

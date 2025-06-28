@@ -1,110 +1,118 @@
 import { NextResponse } from "next/server";
 import { dbConnect } from "@/lib/dbConnect";
+import { checkAnyPermission, createAnyPermissionErrorResponse } from "@/lib/checkPermissions";
+import { ActivityTypes, getClientInfo, logActivity } from "@/lib/activityLogger";
 import { ContentReportModel } from "@/models/ReportContent";
-import { Types } from "mongoose";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
-    const report = await ContentReportModel.aggregate([
-      {
-        $match: {
-          _id: new Types.ObjectId(params.id),
-        },
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "user_id",
-          foreignField: "_id",
-          as: "user",
-        },
-      },
-      { $unwind: "$user" },
-      {
-        $lookup: {
-          from: "contents",
-          localField: "content_id",
-          foreignField: "_id",
-          as: "content",
-        },
-      },
-      { $unwind: "$content" },
-      {
-        $project: {
-          reason: 1,
-          status: 1,
-          createdAt: 1,
-          user: {
-            _id: 1,
-            fullName: 1,
-            userName: 1,
-            avatarURL: 1,
-          },
-          content: {
-            _id: 1,
-            content_url: 1,
-            caption: 1,
-            content_type: 1,
-            media_type: 1,
-          },
-        },
-      },
-    ]);
+
+    // Permission check - CONTENT_VIEW or SUPER_ADMIN
+    const permissionCheck = await checkAnyPermission(["CONTENT_VIEW", "SUPER_ADMIN"]);
+    if (!permissionCheck.hasPermission) {
+      return NextResponse.json(
+        createAnyPermissionErrorResponse(["CONTENT_VIEW", "SUPER_ADMIN"], permissionCheck.permissions),
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+    const report = await ContentReportModel.findById(id);
+
     if (!report) {
       return NextResponse.json(
         { success: false, error: "Report not found" },
         { status: 404 }
       );
     }
-    return NextResponse.json({ success: true, data: report }, { status: 200 });
+
+    // Log activity
+    await logActivity({
+      userId: permissionCheck.user._id.toString(),
+      activityType: ActivityTypes.ACTIVITY_VIEWED,
+      description: `Viewed moderation report: ${report._id}`,
+      metadata: { reportId: report._id },
+      ...getClientInfo(request)
+    });
+
+    return NextResponse.json({ success: true, data: report });
   } catch (error) {
+    console.error("Error fetching moderation report:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to fetch report" },
+      { success: false, error: "Failed to fetch moderation report" },
       { status: 500 }
     );
   }
 }
 
-export async function PATCH(
+export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
+
+    // Permission check - USER_BAN or SUPER_ADMIN
+    const permissionCheck = await checkAnyPermission(["USER_BAN", "SUPER_ADMIN"]);
+    if (!permissionCheck.hasPermission) {
+      return NextResponse.json(
+        createAnyPermissionErrorResponse(["USER_BAN", "SUPER_ADMIN"], permissionCheck.permissions),
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
     const body = await request.json();
-    const updated = await ContentReportModel.findByIdAndUpdate(
-      params.id,
-      body,
-      { new: true }
-    )
-      .populate("user_id", "fullName userName avatarURL")
-      .populate("content_id");
-    if (!updated) {
+    const report = await ContentReportModel.findById(id);
+
+    if (!report) {
       return NextResponse.json(
         { success: false, error: "Report not found" },
         { status: 404 }
       );
     }
-    return NextResponse.json({ success: true, data: updated }, { status: 200 });
-  } catch (error) {
+
+    // Update the report
+    const updatedReport = await ContentReportModel.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true, runValidators: true }
+    );
+
+    // Log activity
+    await logActivity({
+      userId: permissionCheck.user._id.toString(),
+      activityType: ActivityTypes.MODERATION_ACTION,
+      description: `Updated moderation report: ${updatedReport._id}`,
+      metadata: { 
+        reportId: updatedReport._id,
+        updatedFields: Object.keys(body)
+      },
+      ...getClientInfo(request)
+    });
+
+    return NextResponse.json({ success: true, data: updatedReport });
+  } catch (error: any) {
+    console.error("Error updating moderation report:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to update report" },
-      { status: 500 }
+      { success: false, error: error.message },
+      { status: 400 }
     );
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await dbConnect();
-    const deleted = await ContentReportModel.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const deleted = await ContentReportModel.findByIdAndDelete(id);
     if (!deleted) {
       return NextResponse.json(
         { success: false, error: "Report not found" },

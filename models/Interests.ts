@@ -13,6 +13,11 @@ const interestSchema = new Schema<InterestDocument>(
       unique: true,
       trim: true,
     },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
   },
   {
     versionKey: false,

@@ -15,6 +15,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Table } from "./ui/table";
 import { Card } from "./ui/card";
+import { useApi } from "@/hooks/use-api";
+import { TOAST_CONFIGS } from "@/lib/api-utils";
 
 export function UserProfileSheet({
   userId,
@@ -25,21 +27,21 @@ export function UserProfileSheet({
 }) {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<UserType>();
-  const [loading, setLoading] = useState(false);
+  
+  const { loading, get } = useApi();
 
   const handleOpenChange = async (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
-      setLoading(true);
       setUser(undefined);
       try {
-        const res = await fetch(`/api/users/${userId}`);
-        const data = await res.json();
-        setUser(data.data);
+        const result = await get(`/api/users/${userId}`, TOAST_CONFIGS.fetch);
+        if (result.success && result.data) {
+          setUser(result.data);
+        }
       } catch (e) {
         setUser(undefined);
       }
-      setLoading(false);
     }
   };
 

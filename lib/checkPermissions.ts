@@ -18,6 +18,8 @@ export async function checkPermission(requiredPermission: string): Promise<{
       };
     }
 
+    console.log(currentUser)
+
     const userPermissions = currentUser.permissions.map((p: any) => p.name);    
     
     // Check if user has the required permission
@@ -25,7 +27,7 @@ export async function checkPermission(requiredPermission: string): Promise<{
     
     return {
       hasPermission,
-      user: currentUser.user,
+      user: currentUser,
       permissions: userPermissions,
       error: hasPermission ? undefined : `Insufficient permissions. Required: ${requiredPermission}`
     };
@@ -71,7 +73,7 @@ export async function checkAnyPermission(requiredPermissions: string[]): Promise
     
     return {
       hasPermission,
-      user: currentUser.user,
+      user: currentUser,
       permissions: userPermissions,
       matchedPermission,
       error: hasPermission ? undefined : `Insufficient permissions. Required any of: ${requiredPermissions.join(', ')}`

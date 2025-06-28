@@ -14,66 +14,29 @@ import {
 
 export async function GET(request: Request) {
   try {
-    // Example 1: Check for ANY of these permissions (OR logic)
-    const permissionCheck = await checkAnyPermission(["ACTIVITY_VIEW", "ADMIN_ACTIVITY_VIEW", "SUPER_ADMIN"]);
+    await dbConnect();
+
+    // Permission check - ACTIVITIES_VIEW or SUPER_ADMIN
+    const permissionCheck = await checkAnyPermission(["ACTIVITIES_VIEW", "SUPER_ADMIN"]);
     if (!permissionCheck.hasPermission) {
       return NextResponse.json(
-        createAnyPermissionErrorResponse(["ACTIVITY_VIEW", "ADMIN_ACTIVITY_VIEW", "SUPER_ADMIN"], permissionCheck.permissions),
+        createAnyPermissionErrorResponse(["ACTIVITIES_VIEW", "SUPER_ADMIN"], permissionCheck.permissions),
         { status: 403 }
       );
     }
 
-    // Example 2: Check for ALL of these permissions (AND logic) - uncomment if needed
-    // const permissionCheck = await checkAllPermissions(["ACTIVITY_VIEW", "USER_MANAGE"]);
-    // if (!permissionCheck.hasPermission) {
-    //   return NextResponse.json(
-    //     createAllPermissionsErrorResponse(["ACTIVITY_VIEW", "USER_MANAGE"], permissionCheck.missingPermissions, permissionCheck.permissions),
-    //     { status: 403 }
-    //   );
-    // }
+    const activities = await ActivityModel.find({}).sort({ createdAt: -1 });
 
-    // Example 3: Single permission check (original way)
-    // const permissionCheck = await checkPermission("ACTIVITY_VIEW");
-    // if (!permissionCheck.hasPermission) {
-    //   return NextResponse.json(
-    //     createPermissionErrorResponse("ACTIVITY_VIEW", permissionCheck.permissions),
-    //     { status: 403 }
-    //   );
-    // }
-
-    await dbConnect();
-    const { searchParams } = new URL(request.url);
-    
-    // Query parameters for filtering
-    const userId = searchParams.get('userId');
-    const activityType = searchParams.get('activityType');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const page = parseInt(searchParams.get('page') || '1');
-    const skip = (page - 1) * limit;
-
-    // Build query
-    const query: any = {};
-    if (userId) query.userId = userId;
-    if (activityType) query.activityType = activityType;
-
-    const activities = await ActivityModel.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .populate('userId', 'fullName userName avatarURL');
-
-    const total = await ActivityModel.countDocuments(query);
-
-    return NextResponse.json({ 
-      success: true, 
-      data: activities,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit)
-      }
+    // Log activity
+    await logActivity({
+      userId: permissionCheck.user._id.toString(),
+      activityType: ActivityTypes.ACTIVITY_VIEWED,
+      description: "Viewed activities list",
+      metadata: { count: activities.length },
+      ...getClientInfo(request)
     });
+
+    return NextResponse.json({ success: true, data: activities });
   } catch (error) {
     console.error("Error fetching activities:", error);
     return NextResponse.json(

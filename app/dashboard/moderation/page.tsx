@@ -4,17 +4,22 @@ import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContentReportType } from "./columns";
 import { ContentTable } from "./data-table";
+import { useApi } from "@/hooks/use-api";
+import { TOAST_CONFIGS } from "@/lib/api-utils";
 
 export default function Page() {
   const [moderationData, setModerationData] = useState<ContentReportType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  const { get } = useApi();
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch("/api/moderation");
-        const { data } = await response.json();
-        setModerationData(data);
+        const result = await get("/api/moderation", TOAST_CONFIGS.fetch);
+        if (result.success && result.data) {
+          setModerationData(result.data);
+        }
       } catch (error) {
         console.error("Error fetching users:", error);
       } finally {

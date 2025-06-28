@@ -17,6 +17,50 @@ export interface ContentDocument extends Document {
   media_type: String;
   expires_at?: Date;
   duration?: number;
+  // Enhanced metadata fields
+  cloudinary_public_id?: string;
+  upload_metadata?: {
+    width?: number;
+    height?: number;
+    duration?: number;
+    bytes: number;
+    original_filename: string;
+    format: string;
+    resource_type: string;
+    aspect_ratio?: number;
+    fps?: number;
+    bitrate?: number;
+    codec?: string;
+  };
+  // Additional content details
+  title?: string;
+  description?: string;
+  tags?: string[];
+  is_public: boolean;
+  is_featured: boolean;
+  view_count: number;
+  like_count: number;
+  share_count: number;
+  comment_count: number;
+  // Video specific fields
+  video_metadata?: {
+    duration: number;
+    resolution: string;
+    fps: number;
+    bitrate: number;
+    codec: string;
+    audio_codec?: string;
+    audio_bitrate?: number;
+    audio_channels?: number;
+  };
+  // Image specific fields
+  image_metadata?: {
+    width: number;
+    height: number;
+    format: string;
+    color_space?: string;
+    exif_data?: any;
+  };
 }
 
 const contentSchema = new Schema<ContentDocument>(
@@ -59,8 +103,41 @@ const contentSchema = new Schema<ContentDocument>(
     expires_at: {
       type: Date,
     },
-    duration: {
-      type: Number,
+    // Enhanced metadata fields
+    cloudinary_public_id: {
+      type: String,
+    },
+    upload_metadata: {
+      width: Number,
+      height: Number,
+      duration: Number,
+      bytes: Number,
+      original_filename: String,
+      format: String,
+      resource_type: String,
+      aspect_ratio: Number,
+      fps: Number,
+      bitrate: Number,
+      codec: String,
+    },
+    // Video specific fields
+    video_metadata: {
+      duration: Number,
+      resolution: String,
+      fps: Number,
+      bitrate: Number,
+      codec: String,
+      audio_codec: String,
+      audio_bitrate: Number,
+      audio_channels: Number,
+    },
+    // Image specific fields
+    image_metadata: {
+      width: Number,
+      height: Number,
+      format: String,
+      color_space: String,
+      exif_data: Schema.Types.Mixed,
     },
   },
   {

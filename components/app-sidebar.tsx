@@ -3,6 +3,7 @@
 import {
   Activity,
   BarChart3,
+  ChartNoAxesColumn,
   FileText,
   Flag,
   Home,
@@ -42,6 +43,11 @@ export default function AppSidebar() {
       url: "/dashboard",
       icon: Home,
       isActive: true,
+    },
+    {
+      title: "Manage MYST Profiles",
+      url: "/dashboard/myst-profiles",
+      icon: ChartNoAxesColumn,
     },
     {
       title: "Users",

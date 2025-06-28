@@ -13,7 +13,7 @@ import {
   getPaginationRowModel,
 } from "@tanstack/react-table";
 
-import { columns } from "./columns";
+import { createColumns } from "./columns";
 import { UserType } from "./columns";
 import {
   Table,
@@ -34,15 +34,19 @@ import {
 
 type UserTableProps = {
   data: UserType[];
+  showAssignButton: boolean
 };
 
-export function UserTable({ data }: UserTableProps) {
+export function UserTable({ data, showAssignButton }: UserTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
+
+  // Create columns based on the showAssignButton prop
+  const columns = React.useMemo(() => createColumns(showAssignButton), [showAssignButton]);
 
   const table = useReactTable({
     data,
