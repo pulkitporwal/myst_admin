@@ -35,6 +35,8 @@ export const authOptions: NextAuthOptions = {
           user.password
         );
 
+        console.log(isValid)
+
         // const isValid = credentials.password === user.password;
 
         if (!isValid) {
