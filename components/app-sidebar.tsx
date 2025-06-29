@@ -12,6 +12,8 @@ import {
   Shield,
   ShieldUser,
   Users,
+  Clock,
+  CheckSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -65,6 +67,11 @@ export default function AppSidebar() {
       icon: Flag,
     },
     {
+      title: "Tasks",
+      url: "/dashboard/tasks",
+      icon: CheckSquare,
+    },
+    {
       title: "Analytics",
       url: "/dashboard/analytics",
       icon: BarChart3,
@@ -73,6 +80,12 @@ export default function AppSidebar() {
       title: "Admin Members",
       url: "/dashboard/admin-members",
       icon: ShieldUser,
+    },
+    {
+      title: "Pending Applications",
+      url: "/dashboard/pending-applications",
+      icon: Clock,
+      superAdminOnly: true,
     },
     {
       title: "Settings",

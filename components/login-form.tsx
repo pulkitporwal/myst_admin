@@ -92,6 +92,19 @@ export function LoginForm({
               </Button>
             </div>
           </form>
+          
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Want to join our admin team?{" "}
+              <Button 
+                variant="link" 
+                className="p-0 h-auto text-blue-600 hover:text-blue-800"
+                onClick={() => router.push('/apply')}
+              >
+                Apply here
+              </Button>
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

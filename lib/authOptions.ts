@@ -25,10 +25,17 @@ export const authOptions: NextAuthOptions = {
           throw new Error("User not found");
         }
 
+        // Check if user is active
+        if (!user.isActive) {
+          throw new Error("Your account is not yet activated. Please wait for a super admin to approve your application.");
+        }
+
         const isValid = await bcrypt.compare(
           credentials.password,
           user.password
         );
+
+        // const isValid = credentials.password === user.password;
 
         if (!isValid) {
           throw new Error("Invalid credentials");
