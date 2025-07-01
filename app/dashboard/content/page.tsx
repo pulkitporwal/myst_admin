@@ -7,22 +7,19 @@ import { Plus } from "lucide-react";
 import { ContentType } from "./columns";
 import { ContentTable } from "./data-table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 export default function Page() {
   const router = useRouter();
   const [contentData, setContentData] = useState<ContentType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
-  const { get } = useApi();
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await get("/api/content", TOAST_CONFIGS.fetch);
-        if (result.success && result.data) {
-          setContentData(result.data);
+        const data = await handleAPICall("/api/content", methodENUM.GET);
+        if (data) {
+          setContentData(data);
         }
       } catch (error) {
         console.error("Error fetching content:", error);
@@ -32,6 +29,8 @@ export default function Page() {
     };
     fetchData();
   }, []);
+
+  console.log(contentData)
 
   return (
     <div className="p-4 w-full h-full">

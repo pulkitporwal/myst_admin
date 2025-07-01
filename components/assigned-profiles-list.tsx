@@ -11,8 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UserCheck, Users, Loader2, AlertCircle, UserX } from "lucide-react";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 interface AssignedUser {
   _id: string;
@@ -42,9 +41,8 @@ export function AssignedProfilesList({
 }: AssignedProfilesListProps) {
   const [assignedUsers, setAssignedUsers] = useState<AssignedUser[]>([]);
   const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  const { loading, get, del } = useApi();
-
   useEffect(() => {
     fetchAssignedUsers();
   }, []);
@@ -52,9 +50,9 @@ export function AssignedProfilesList({
   const fetchAssignedUsers = async () => {
     setFetchingUsers(true);
     try {
-      const result = await get(`/api/users/assigned/${adminUserId}`, TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setAssignedUsers(result.data);
+      const data = await handleAPICall(`/api/users/assigned/${adminUserId}`, methodENUM.GET);
+      if (data) {
+        setAssignedUsers(data);
       }
     } catch (error) {
       console.error("Error fetching assigned users:", error);
@@ -64,14 +62,18 @@ export function AssignedProfilesList({
   };
 
   const handleUnassignUser = async (userId: string, userName: string) => {
-    const result = await del(`/api/users/assign?userId=${userId}`, {
-      ...TOAST_CONFIGS.unassign,
-      successMessage: `Successfully unassigned ${userName}`,
-      onSuccess: () => {
+    setLoading(true);
+    try {
+      const data = await handleAPICall(`/api/users/assign?userId=${userId}`, methodENUM.DELETE);
+      if (data) {
         onAssignmentChange();
         fetchAssignedUsers(); // Refresh the list
-      },
-    });
+      }
+    } catch (error) {
+      console.error("Error unassigning user:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (fetchingUsers) {

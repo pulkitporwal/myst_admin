@@ -9,26 +9,27 @@ import {
 } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 export function ModerationSheet({ reportId, triggerLabel = "View" }) {
   const [open, setOpen] = useState(false);
   const [report, setReport] = useState(null);
   const [status, setStatus] = useState("");
-  
-  const { loading, get, patch } = useApi();
+  const [loading, setLoading] = useState(false);
 
   const fetchReport = async (id) => {
     setReport(null);
+    setLoading(true);
     try {
-      const result = await get(`/api/moderation/${id}`, TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setReport(result.data);
-        setStatus(result.data.status);
+      const data = await handleAPICall(`/api/moderation/${id}`, methodENUM.GET);
+      if (data) {
+        setReport(data);
+        setStatus(data.status);
       }
     } catch (e) {
       setReport(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,14 +39,15 @@ export function ModerationSheet({ reportId, triggerLabel = "View" }) {
   };
 
   const handleStatusChange = async (newStatus) => {
-    const result = await patch(`/api/moderation/${reportId}`, { status: newStatus }, {
-      ...TOAST_CONFIGS.update,
-      successMessage: "Status updated successfully",
-      onSuccess: (data) => {
+    try {
+      const data = await handleAPICall(`/api/moderation/${reportId}`, methodENUM.PUT, { status: newStatus });
+      if (data) {
         setReport(data);
         setStatus(data.status);
-      },
-    });
+      }
+    } catch (error) {
+      console.error("Error updating status:", error);
+    }
   };
 
   return (

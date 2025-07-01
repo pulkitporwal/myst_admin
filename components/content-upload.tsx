@@ -42,6 +42,7 @@ import { Textarea } from "./ui/textarea";
 import { Switch } from "./ui/switch";
 import { Collapsible, CollapsibleContent } from "./ui/collapsible";
 import { CollapsibleTrigger } from "@radix-ui/react-collapsible";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 // Define content types
 const CONTENT_TYPE = {
@@ -128,9 +129,8 @@ export function ContentUpload({
   useEffect(() => {
     const fetchInterests = async () => {
       try {
-        const response = await fetch("/api/interests");
-        if (response.ok) {
-          const { data } = await response.json();
+        const data = await handleAPICall("/api/interests", methodENUM.GET);
+        if (data) {
           setInterests(data || []);
         } else {
           console.warn(

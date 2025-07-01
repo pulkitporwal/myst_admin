@@ -42,8 +42,10 @@ export async function GET(
 
     // Check if user can view this task
     if (currentUser.role !== "super-admin") {
-      if (task.assignedTo._id.toString() !== currentUser._id.toString() && 
-          task.assignedBy._id.toString() !== currentUser._id.toString()) {
+      const isAssignedTo = task.assignedTo?._id?.toString() === currentUser._id.toString();
+      const isAssignedBy = task.assignedBy?._id?.toString() === currentUser._id.toString();
+
+      if (!isAssignedTo && !isAssignedBy) {
         return NextResponse.json(
           { success: false, error: "Access denied" },
           { status: 403 }
@@ -60,6 +62,7 @@ export async function GET(
     );
   }
 }
+
 
 // Update task (request completion, approve, reject)
 export async function PUT(
@@ -88,316 +91,126 @@ export async function PUT(
       );
     }
 
-    // Super-admin can perform any action
-    if (currentUser.role === "super-admin") {
-      if (action === "start_task") {
-        // Only the assigned user can start the task
-        if (task.assignedTo.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the assigned user can start this task" },
-            { status: 403 }
-          );
-        }
+    const STATUS = {
+      PENDING: "pending",
+      IN_PROGRESS: "in_progress",
+      COMPLETION_REQUESTED: "completion_requested",
+      APPROVED: "approved",
+      REJECTED: "rejected",
+    };
 
-        if (task.status !== "pending") {
+    const idEquals = (field:any, userId:any) => {
+      if (!field) return false;
+      return field?._id?.toString() === userId || field?.toString() === userId;
+    };
+
+    // Validate allowed actions
+    const validActions = [
+      "start_task",
+      "request_completion",
+      "approve_completion",
+      "reject_completion",
+    ];
+
+    if (!validActions.includes(action)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid action" },
+        { status: 400 }
+      );
+    }
+
+    // Helper to log and return
+    const logAndRespond = async (activityType:any, description:any, successMessage:any) => {
+      await task.save();
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType,
+        description,
+        metadata: {
+          taskId: task._id,
+          taskTitle: task.title,
+        },
+        ...getClientInfo(request),
+      });
+      return NextResponse.json({
+        success: true,
+        message: successMessage,
+        data: task,
+      });
+    };
+
+    // Super Admin and Admin logic
+    if (currentUser.role === "super-admin" || currentUser.role === "admin") {
+      if (action === "start_task") {
+        if (task.status !== STATUS.PENDING) {
           return NextResponse.json(
             { success: false, error: "Task must be pending to start" },
             { status: 400 }
           );
         }
-
-        task.status = "in_progress";
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_STARTED,
-          description: `Started task: ${task.title} (Super Admin)`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task started successfully",
-          data: task,
-        });
+        task.status = STATUS.IN_PROGRESS;
+        return logAndRespond(
+          ActivityTypes.TASK_STARTED,
+          `Started task: ${task.title} (${currentUser.role})`,
+          "Task started successfully"
+        );
       }
 
       if (action === "request_completion") {
-        // Only the assigned user can request completion
-        if (task.assignedTo.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the assigned user can request completion" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "in_progress") {
+        if (task.status !== STATUS.IN_PROGRESS) {
           return NextResponse.json(
             { success: false, error: "Task must be in progress to request completion" },
             { status: 400 }
           );
         }
-
-        task.status = "completion_requested";
+        task.status = STATUS.COMPLETION_REQUESTED;
         task.completionRequestedAt = new Date();
         task.completionRequestNotes = completionRequestNotes;
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_COMPLETED,
-          description: `Requested task completion: ${task.title} (Super Admin)`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task completion requested",
-          data: task,
-        });
+        return logAndRespond(
+          ActivityTypes.TASK_COMPLETED,
+          `Requested task completion: ${task.title} (${currentUser.role})`,
+          "Task completion requested"
+        );
       }
 
       if (action === "approve_completion") {
-        // Only the person who created the task can approve
-        if (task.assignedBy.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the task creator can approve completion" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "completion_requested") {
+        if (task.status !== STATUS.COMPLETION_REQUESTED) {
           return NextResponse.json(
             { success: false, error: "Task must have completion requested before approval" },
             { status: 400 }
           );
         }
-
-        task.status = "approved";
+        task.status = STATUS.APPROVED;
         task.approvedAt = new Date();
         task.approvedBy = currentUser._id;
         task.approvalNotes = approvalNotes;
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_APPROVED,
-          description: `Approved task completion: ${task.title} (Super Admin)`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task completion approved",
-          data: task,
-        });
+        return logAndRespond(
+          ActivityTypes.TASK_APPROVED,
+          `Approved task completion: ${task.title} (${currentUser.role})`,
+          "Task completion approved"
+        );
       }
 
       if (action === "reject_completion") {
-        // Only the person who created the task can reject
-        if (task.assignedBy.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the task creator can reject completion" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "completion_requested") {
+        if (task.status !== STATUS.COMPLETION_REQUESTED) {
           return NextResponse.json(
             { success: false, error: "Task must have completion requested before rejection" },
             { status: 400 }
           );
         }
-
-        task.status = "rejected";
+        task.status = STATUS.REJECTED;
         task.approvalNotes = approvalNotes;
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_REJECTED,
-          description: `Rejected task completion: ${task.title} (Super Admin)`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task completion rejected",
-          data: task,
-        });
-      }
-    }
-
-    // Admin and Manager roles
-    if (currentUser.role === "admin" || currentUser.role === "manager") {
-      if (action === "start_task") {
-        // Only the assigned user can start the task
-        if (task.assignedTo.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the assigned user can start this task" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "pending") {
-          return NextResponse.json(
-            { success: false, error: "Task must be pending to start" },
-            { status: 400 }
-          );
-        }
-
-        task.status = "in_progress";
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_STARTED,
-          description: `Started task: ${task.title} (${currentUser.role})`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task started successfully",
-          data: task,
-        });
-      }
-
-      if (action === "request_completion") {
-        // Only the assigned user can request completion
-        if (task.assignedTo.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the assigned user can request completion" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "in_progress") {
-          return NextResponse.json(
-            { success: false, error: "Task must be in progress to request completion" },
-            { status: 400 }
-          );
-        }
-
-        task.status = "completion_requested";
-        task.completionRequestedAt = new Date();
-        task.completionRequestNotes = completionRequestNotes;
-        
-        await task.save();
-
-        await logActivity({
-          userId: currentUser._id.toString(),
-          activityType: ActivityTypes.TASK_COMPLETED,
-          description: `Requested task completion: ${task.title} (${currentUser.role})`,
-          metadata: {
-            taskId: task._id,
-            taskTitle: task.title,
-          },
-          ...getClientInfo(request),
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Task completion requested",
-          data: task,
-        });
-      }
-
-      if (action === "approve_completion" || action === "reject_completion") {
-        // Only the person who created the task can approve/reject
-        if (task.assignedBy.toString() !== currentUser._id.toString()) {
-          return NextResponse.json(
-            { success: false, error: "Only the task creator can approve/reject completion" },
-            { status: 403 }
-          );
-        }
-
-        if (task.status !== "completion_requested") {
-          return NextResponse.json(
-            { success: false, error: "Task must have completion requested before approval/rejection" },
-            { status: 400 }
-          );
-        }
-
-        if (action === "approve_completion") {
-          task.status = "approved";
-          task.approvedAt = new Date();
-          task.approvedBy = currentUser._id;
-          task.approvalNotes = approvalNotes;
-          
-          await task.save();
-
-          await logActivity({
-            userId: currentUser._id.toString(),
-            activityType: ActivityTypes.TASK_APPROVED,
-            description: `Approved task completion: ${task.title} (${currentUser.role})`,
-            metadata: {
-              taskId: task._id,
-              taskTitle: task.title,
-            },
-            ...getClientInfo(request),
-          });
-
-          return NextResponse.json({
-            success: true,
-            message: "Task completion approved",
-            data: task,
-          });
-        } else {
-          task.status = "rejected";
-          task.approvalNotes = approvalNotes;
-          
-          await task.save();
-
-          await logActivity({
-            userId: currentUser._id.toString(),
-            activityType: ActivityTypes.TASK_REJECTED,
-            description: `Rejected task completion: ${task.title} (${currentUser.role})`,
-            metadata: {
-              taskId: task._id,
-              taskTitle: task.title,
-            },
-            ...getClientInfo(request),
-          });
-
-          return NextResponse.json({
-            success: true,
-            message: "Task completion rejected",
-            data: task,
-          });
-        }
+        return logAndRespond(
+          ActivityTypes.TASK_REJECTED,
+          `Rejected task completion: ${task.title} (${currentUser.role})`,
+          "Task completion rejected"
+        );
       }
     }
 
     return NextResponse.json(
       { success: false, error: "Invalid action or insufficient permissions" },
-      { status: 400 }
+      { status: 403 }
     );
   } catch (error: any) {
     console.error("Error updating task:", error);
@@ -407,6 +220,7 @@ export async function PUT(
     );
   }
 }
+
 
 // Delete task
 export async function DELETE(

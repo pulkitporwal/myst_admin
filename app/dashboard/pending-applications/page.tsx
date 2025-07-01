@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle, XCircle, Clock, User, Mail, Phone, FileText } from "lucide-react";
 import { format } from "date-fns";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 interface PendingApplication {
   _id: string;
@@ -35,13 +36,9 @@ export default function PendingApplicationsPage() {
 
   const fetchPendingApplications = async () => {
     try {
-      const response = await fetch('/api/admin-users/pending');
-      const data = await response.json();
-      
-      if (data.success) {
-        setApplications(data.data);
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to fetch applications' });
+      const data = await handleAPICall('/api/admin-users/pending', methodENUM.GET);
+      if (data) {
+        setApplications(data);
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred while fetching applications' });
@@ -55,21 +52,13 @@ export default function PendingApplicationsPage() {
 
     setProcessing(selectedApp._id);
     try {
-      const response = await fetch('/api/admin-users/pending', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: selectedApp._id,
-          action,
-          notes,
-        }),
+      const data = await handleAPICall('/api/admin-users/pending', methodENUM.POST, {
+        userId: selectedApp._id,
+        action,
+        notes,
       });
-
-      const data = await response.json();
-
-      if (data.success) {
+      
+      if (data) {
         setMessage({ 
           type: 'success', 
           text: `Application ${action === 'approve' ? 'approved' : 'rejected'} successfully` 
@@ -78,8 +67,6 @@ export default function PendingApplicationsPage() {
         setSelectedApp(null);
         setAction(null);
         setNotes("");
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to process application' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred while processing the application' });

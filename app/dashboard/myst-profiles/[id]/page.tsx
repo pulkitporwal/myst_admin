@@ -26,8 +26,7 @@ import {
   Eye,
   ImageIcon,
 } from "lucide-react";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 import { toast } from "sonner";
 import { ContentUpload } from "@/components/content-upload";
 import Image from "next/image";
@@ -86,58 +85,52 @@ interface Content {
 export default function ProfileDetailPage() {
   const params = useParams();
   const userId = params.id as string;
-  const { get, post } = useApi();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [content, setContent] = useState<Content[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchProfileData = async () => {
-      const response = await fetch(`/api/users/${userId}`);
-      const { data } = await response.json();
-      setProfile(data);
+    const fetchData = async () => {
+      try {
+        const [profileData, contentData] = await Promise.all([
+          handleAPICall(`/api/users/${userId}`, methodENUM.GET),
+          handleAPICall(`/api/content/user/${userId}`, methodENUM.GET),
+        ]);
+
+        if (profileData) {
+          setProfile(profileData);
+        }
+        if (contentData) {
+          setContent(contentData);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const fetchProfileContent = async () => {
-      const response = await fetch(`/api/content/user/${userId}`);
-      const { data } = await response.json();
-      setContent(data);
-    };
-
-    fetchProfileData();
-    setLoading(false);
-    fetchProfileContent();
-  }, []);
-
-  console.log(profile);
-  console.log(content);
+    fetchData();
+  }, [userId]);
 
   const handleUploadSuccess = async (contentData: any) => {
     try {
-      const response = await fetch("/api/content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contentData),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result.success) {
+      const data = await handleAPICall(
+        "/api/content",
+        methodENUM.POST,
+        contentData
+      );
+      if (data) {
         toast.success("Content saved successfully");
 
-        const contentResponse = await fetch(`/api/content/user/${userId}`);
-        const contentResult = await contentResponse.json();
-
-        if (contentResponse.ok && contentResult.success && contentResult.data) {
-          setContent(contentResult.data);
-        } else {
-          toast.error("Failed to refresh content");
+        const contentData = await handleAPICall(
+          `/api/content/user/${userId}`,
+          methodENUM.GET
+        );
+        if (contentData) {
+          setContent(contentData);
         }
-      } else {
-        toast.error(result.message || "Failed to save content");
       }
     } catch (error) {
       console.error("Error saving content:", error);

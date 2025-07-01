@@ -3,81 +3,123 @@ import { dbConnect } from "@/lib/dbConnect";
 import "@/models/Interests";
 import { UserModel } from "@/models/User";
 import { getCurrentUserWithPermissions } from "@/lib/getCurrentUserWithPermissions";
-import {  checkAnyPermission, createPermissionErrorResponse } from "@/lib/checkPermissions";
+import { checkAnyPermission, createPermissionErrorResponse } from "@/lib/checkPermissions";
 import { ActivityTypes, getClientInfo, logActivity } from "@/lib/activityLogger";
 
 export async function GET(request: Request) {
   try {
     await dbConnect();
 
+    // 1️⃣ Get current user
     const currentUser = await getCurrentUserWithPermissions();
     if (!currentUser) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
+        { success: false, msg: "Unauthorized" },
         { status: 401 }
       );
     }
 
-    // Permission check
-    const permissionCheck = await checkAnyPermission([
-      "USER_VIEW_ASSIGNED",
-      "SUPER_ADMIN",
-    ]);
+    // 2️⃣ Super Admin: no permission needed, return all users
+    if (currentUser.role === "super-admin") {
+      const users = await UserModel.find(
+        { isActive: true },
+        { password: 0, fcmToken: 0 }
+      )
+        .sort({ createdAt: -1 })
+        .populate("interestIn", "interest description")
+        .populate("assignedTo", "fullName email role");
 
-    if (!permissionCheck.hasPermission) {
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: "Viewed all users list (Super Admin)",
+        metadata: {
+          count: users.length,
+        },
+        ...getClientInfo(request),
+      });
+
       return NextResponse.json(
-        createPermissionErrorResponse(
-          "VIEW_ASSIGNED_USERS",
-          permissionCheck.permissions
-        ),
-        { status: 403 }
+        { success: true, msg: "All Active Users Fetched", data: users },
+        { status: 200 }
       );
     }
 
-    // Only managers, admins, and super-admins can access
-    if (!["admin", "manager", "super-admin"].includes(currentUser.role)) {
+    // 3️⃣ Admin: must have USER_VIEW to view all active users
+    if (currentUser.role === "admin") {
+      const permissionCheck = await checkAnyPermission(["USER_VIEW"]);
+      if (!permissionCheck.hasPermission) {
+        return NextResponse.json(
+          createPermissionErrorResponse("USER_VIEW", permissionCheck.permissions),
+          { status: 403 }
+        );
+      }
+
+      const users = await UserModel.find(
+        { isActive: true },
+        { password: 0, fcmToken: 0 }
+      )
+        .sort({ createdAt: -1 })
+        .populate("interestIn", "interest description")
+        .populate("assignedTo", "fullName email role");
+
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: "Viewed all users list (Admin)",
+        metadata: {
+          count: users.length,
+        },
+        ...getClientInfo(request),
+      });
+
       return NextResponse.json(
-        { success: false, error: "Insufficient permissions" },
-        { status: 403 }
+        { success: true, msg: "All Active Users Fetched", data: users },
+        { status: 200 }
       );
     }
 
-    // Build query condition
-    let query: Record<string, any> = {
-      isActive: true,
-    };
+    // 4️⃣ Manager: must have USER_VIEW, but only see assigned users
+    if (currentUser.role === "manager") {
+      const permissionCheck = await checkAnyPermission(["USER_VIEW"]);
+      if (!permissionCheck.hasPermission) {
+        return NextResponse.json(
+          createPermissionErrorResponse("USER_VIEW", permissionCheck.permissions),
+          { status: 403 }
+        );
+      }
 
-    if (currentUser.role !== "super-admin") {
-      // For admin/manager: only assigned users
-      query.assignedTo = currentUser._id;
+      const users = await UserModel.find(
+        {
+          isActive: true,
+          assignedTo: currentUser._id,
+        },
+        { password: 0, fcmToken: 0 }
+      )
+        .sort({ createdAt: -1 })
+        .populate("interestIn", "interest description")
+        .populate("assignedTo", "fullName email role");
+
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: "Viewed assigned users list (Manager)",
+        metadata: {
+          count: users.length,
+        },
+        ...getClientInfo(request),
+      });
+
+      return NextResponse.json(
+        { success: true, msg: "Assigned Active Users Fetched", data: users },
+        { status: 200 }
+      );
     }
 
-    const users = await UserModel.find(query, {
-      password: 0,
-      fcmToken: 0,
-    })
-      .sort({ createdAt: -1 })
-      .populate("interestIn", "interest description")
-      .populate("assignedTo", "fullName email role");
-
-    // Log activity
-    await logActivity({
-      userId: currentUser._id.toString(),
-      activityType: ActivityTypes.ACTIVITY_VIEWED,
-      description: "Viewed assigned users list",
-      metadata: {
-        count: users.length,
-        adminRole: currentUser.role,
-      },
-      ...getClientInfo(request),
-    });
-
+    // 5️⃣ All other roles: deny access
     return NextResponse.json(
-      {
-        success: true,
-        data: users,
-      },
-      { status: 200 }
+      { success: false, msg: "Access denied" },
+      { status: 403 }
     );
   } catch (error) {
     console.error("Error fetching assigned users:", error);

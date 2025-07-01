@@ -51,10 +51,10 @@ export async function GET(
   }
 }
 
-export async function PATCH(request: Request, { params }: Context) {
+export async function PATCH(request: Request, { params }: any) {
   try {
     // Check permission - you can change this to your custom permission name
-    const permissionCheck = await checkPermission("ACTIVITY_UPDATE");
+    const permissionCheck = await checkAnyPermission(["ACTIVITY_UPDATE","SUPER_ADMIN"]);
     if (!permissionCheck.hasPermission) {
       return NextResponse.json(
         createPermissionErrorResponse("ACTIVITY_UPDATE", permissionCheck.permissions),
@@ -121,10 +121,10 @@ export async function PATCH(request: Request, { params }: Context) {
   }
 }
 
-export async function DELETE(request: Request, { params }: Context) {
+export async function DELETE(request: Request, { params }: any) {
   try {
     // Check permission - you can change this to your custom permission name
-    const permissionCheck = await checkPermission("ACTIVITY_DELETE");
+    const permissionCheck = await checkAnyPermission(["ACTIVITY_DELETE","SUPER_ADMIN"]);
     if (!permissionCheck.hasPermission) {
       return NextResponse.json(
         createPermissionErrorResponse("ACTIVITY_DELETE", permissionCheck.permissions),

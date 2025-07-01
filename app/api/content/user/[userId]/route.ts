@@ -12,6 +12,7 @@ import {
 import { ContentModel } from "@/models/Content";
 import { UserModel } from "@/models/User";
 import { InterestModel } from "@/models/Interests";
+import { getCurrentUserWithPermissions } from "@/lib/getCurrentUserWithPermissions";
 
 export async function GET(
   request: Request,
@@ -20,78 +21,136 @@ export async function GET(
   try {
     await dbConnect();
 
-    // Permission check - CONTENT_VIEW or SUPER_ADMIN
-    const permissionCheck = await checkAnyPermission([
-      "CONTENT_VIEW",
-      "SUPER_ADMIN",
-    ]);
-    if (!permissionCheck.hasPermission) {
+    const { userId } = await params;
+    InterestModel.modelName;
+
+    const currentUser = await getCurrentUserWithPermissions();
+    if (!currentUser) {
       return NextResponse.json(
-        createAnyPermissionErrorResponse(
-          ["CONTENT_VIEW", "SUPER_ADMIN"],
-          permissionCheck.permissions
-        ),
-        { status: 403 }
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    const { userId } = await params;
+    if (currentUser.role === "super-admin") {
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: "User not found" },
+          { status: 404 }
+        );
+      }
 
-    // If user is not super-admin, check if they can view content for this user
-    if (permissionCheck.user.role !== "super-admin") {
-      // Check if the user is assigned to the current admin
-      const assignedUser = await UserModel.findOne({
-        _id: userId,
-        assignedTo: permissionCheck.user._id,
+      const content = await ContentModel.find({ user_id: userId })
+        .sort({ createdAt: -1 })
+        .populate("user_id", "userName fullName avatarURL")
+        .populate("category", "interest description");
+
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: `Viewed content for user: ${user.fullName} (Super Admin)`,
+        metadata: {
+          count: content?.length,
+          targetUserId: userId,
+          targetUserName: user.fullName,
+        },
+        ...getClientInfo(request),
       });
 
-      if (!assignedUser) {
+      return NextResponse.json({ success: true, data: content });
+    }
+
+    if (currentUser.role === "admin") {
+      const permissionCheck = await checkAnyPermission(["CONTENT_VIEW"]);
+      if (!permissionCheck.hasPermission) {
         return NextResponse.json(
-          { 
-            success: false, 
-            error: "You can only view content for users assigned to you",
-            details: {
-              requiredPermission: "CONTENT_VIEW",
-              userPermissions: permissionCheck.permissions,
-              message: "The specified user is not assigned to you for content management."
-            }
+          createAnyPermissionErrorResponse(["CONTENT_VIEW"], permissionCheck.permissions),
+          { status: 403 }
+        );
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      const content = await ContentModel.find({ user_id: userId })
+        .sort({ createdAt: -1 })
+        .populate("user_id", "userName fullName avatarURL")
+        .populate("category", "interest description");
+
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: `Viewed content for user: ${user.fullName} (Admin)`,
+        metadata: {
+          count: content?.length,
+          targetUserId: userId,
+          targetUserName: user.fullName,
+        },
+        ...getClientInfo(request),
+      });
+
+      return NextResponse.json({ success: true, data: content });
+    }
+
+    // Manager: must have CONTENT_VIEW, can only view assigned users
+    if (currentUser.role === "manager") {
+      const permissionCheck = await checkAnyPermission(["CONTENT_VIEW"]);
+      if (!permissionCheck.hasPermission) {
+        return NextResponse.json(
+          createAnyPermissionErrorResponse(["CONTENT_VIEW"], permissionCheck.permissions),
+          { status: 403 }
+        );
+      }
+
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return NextResponse.json(
+          { success: false, error: "User not found" },
+          { status: 404 }
+        );
+      }
+
+      if (user.assignedTo?.toString() !== currentUser._id.toString()) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Access denied: Managers can only view content for users assigned to them.",
           },
           { status: 403 }
         );
       }
+
+      const content = await ContentModel.find({ user_id: userId })
+        .sort({ createdAt: -1 })
+        .populate("user_id", "userName fullName avatarURL")
+        .populate("category", "interest description");
+
+      await logActivity({
+        userId: currentUser._id.toString(),
+        activityType: ActivityTypes.ACTIVITY_VIEWED,
+        description: `Viewed content for user: ${user.fullName} (Manager)`,
+        metadata: {
+          count: content?.length,
+          targetUserId: userId,
+          targetUserName: user.fullName,
+        },
+        ...getClientInfo(request),
+      });
+
+      return NextResponse.json({ success: true, data: content });
     }
 
-    InterestModel.modelName
-    
-    const user = await UserModel.findById(userId);
-    if (!user) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
-      );
-    }
-
-    // Fetch content for the specific user
-    const content = await ContentModel.find({ user_id: userId })
-      .sort({ createdAt: -1 })
-      .populate("user_id", "userName fullName avatarURL")
-      .populate("category", "interest description");
-      
-
-    // Log activity
-    await logActivity({
-      userId: permissionCheck.user._id.toString(),
-      activityType: ActivityTypes.ACTIVITY_VIEWED,
-      description: `Viewed content for user: ${user.fullName}`,
-      metadata: { 
-        count: content?.length,
-        targetUserId: userId,
-        targetUserName: user.fullName,
-      },
-      ...getClientInfo(request),
-    });
-
-    return NextResponse.json({ success: true, data: content });
+    // All other roles: deny access
+    return NextResponse.json(
+      { success: false, error: "Access denied" },
+      { status: 403 }
+    );
   } catch (error) {
     console.error("Error fetching user content:", error);
     return NextResponse.json(
@@ -99,4 +158,4 @@ export async function GET(
       { status: 500 }
     );
   }
-} 
+}

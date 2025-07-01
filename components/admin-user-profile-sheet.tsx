@@ -5,18 +5,18 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetClose,
 } from "@/components/ui/sheet";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "./ui/skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { BriefcaseBusiness, Mail, User, Shield, X, Save } from "lucide-react";
 import { BulkUserAssignment } from "./bulk-user-assignment";
 import { AssignedProfilesList } from "./assigned-profiles-list";
-import ComboBox from "./combo-box";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { ComboBox } from "@/components/combo-box";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 interface AdminUserData {
   _id: string;
@@ -28,11 +28,7 @@ interface AdminUserData {
   isActive: boolean;
   createdAt: string;
   lastLogin?: string;
-  permissions?: Array<{
-    _id: string;
-    name: string;
-    description: string;
-  }>;
+  permissions?: PermissionData[];
 }
 
 interface PermissionData {
@@ -53,21 +49,21 @@ export function AdminUserProfileSheet({
   const [fetchedPermissions, setFetchedPermissions] = useState<PermissionData[]>([]);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [availablePermissions, setAvailablePermissions] = useState<{ value: string; label: string }[]>([]);
-  
-  const { loading, get, put } = useApi();
+  const [loading, setLoading] = useState(false);
 
   const handleOpenChange = async (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
       setUser(undefined);
+      setLoading(true);
       try {
-        const result = await get(`/api/admin-users/${userId}`, TOAST_CONFIGS.fetch);
-        if (result.success && result.data) {
-          setUser(result.data);
+        const data = await handleAPICall(`/api/admin-users/${userId}`, methodENUM.GET);
+        if (data) {
+          setUser(data);
           
           // Set existing permissions
-          if (result.data.permissions) {
-            setSelectedPermissions(result.data.permissions.map((p: any) => p.name));
+          if (data.permissions) {
+            setSelectedPermissions(data.permissions.map((p: any) => p.name));
           } else {
             setSelectedPermissions([]);
           }
@@ -78,6 +74,8 @@ export function AdminUserProfileSheet({
       } catch (e) {
         console.error("Error fetching admin user:", e);
         setUser(undefined);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -90,12 +88,12 @@ export function AdminUserProfileSheet({
 
   const fetchPermissions = async () => {
     try {
-      const result = await get("/api/permissions", TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setFetchedPermissions(result.data);
+      const data = await handleAPICall("/api/permissions", methodENUM.GET);
+      if (data) {
+        setFetchedPermissions(data);
         
         // Create available permissions for combo box (excluding already selected ones)
-        const available = result.data
+        const available = data
           .filter((permission: PermissionData) => !selectedPermissions.includes(permission.name))
           .map((permission: PermissionData) => ({
             value: permission.name,
@@ -112,9 +110,9 @@ export function AdminUserProfileSheet({
     // Refresh the admin user data to show updated assignment info
     if (open && user) {
       try {
-        const result = await get(`/api/admin-users/${userId}`, TOAST_CONFIGS.silent);
-        if (result.success && result.data) {
-          setUser(result.data);
+        const data = await handleAPICall(`/api/admin-users/${userId}`, methodENUM.GET);
+        if (data) {
+          setUser(data);
         }
       } catch (error) {
         console.error("Error refreshing user data:", error);
@@ -148,29 +146,27 @@ export function AdminUserProfileSheet({
         .filter(permission => selectedPermissions.includes(permission.name))
         .map(permission => permission._id);
 
-      const result = await put(`/api/admin-users/${user._id}`, {
+      const data = await handleAPICall(`/api/admin-users/${user._id}`, methodENUM.PUT, {
         permissions: permissionIds,
-      }, {
-        ...TOAST_CONFIGS.update,
-        successMessage: "Permissions updated successfully",
-        onSuccess: async () => {
-          // Refresh user data to show updated permissions
-          const refreshResult = await get(`/api/admin-users/${userId}`, TOAST_CONFIGS.silent);
-          if (refreshResult.success && refreshResult.data) {
-            setUser(refreshResult.data);
-            
-            // Update selected permissions
-            if (refreshResult.data.permissions) {
-              setSelectedPermissions(refreshResult.data.permissions.map((p: any) => p.name));
-            } else {
-              setSelectedPermissions([]);
-            }
-            
-            // Refresh available permissions
-            await fetchPermissions();
-          }
-        },
       });
+      
+      if (data) {
+        // Refresh user data to show updated permissions
+        const refreshData = await handleAPICall(`/api/admin-users/${userId}`, methodENUM.GET);
+        if (refreshData) {
+          setUser(refreshData);
+          
+          // Update selected permissions
+          if (refreshData.permissions) {
+            setSelectedPermissions(refreshData.permissions.map((p: any) => p.name));
+          } else {
+            setSelectedPermissions([]);
+          }
+          
+          // Refresh available permissions
+          await fetchPermissions();
+        }
+      }
     } catch (error) {
       console.error('Error updating permissions:', error);
     }
@@ -326,7 +322,7 @@ export function AdminUserProfileSheet({
                   <ComboBox
                     data={availablePermissions}
                     comboBoxValue={[]}
-                    setComboBoxValue={(values) => {
+                    setComboBoxValue={(values:any) => {
                       if (values.length > 0) {
                         handleAddPermission(values[0]);
                       }

@@ -142,7 +142,7 @@ export async function checkAllPermissions(requiredPermissions: string[]): Promis
 export function createPermissionErrorResponse(requiredPermission: string, userPermissions: string[]) {
   return {
     success: false,
-    error: "Insufficient permissions",
+    msg: "Insufficient permissions",
     details: {
       required: requiredPermission,
       userPermissions: userPermissions,
@@ -155,7 +155,7 @@ export function createPermissionErrorResponse(requiredPermission: string, userPe
 export function createAnyPermissionErrorResponse(requiredPermissions: string[], userPermissions: string[]) {
   return {
     success: false,
-    error: "Insufficient permissions",
+    msg: "Insufficient permissions",
     details: {
       required: requiredPermissions,
       userPermissions: userPermissions,
@@ -168,7 +168,7 @@ export function createAnyPermissionErrorResponse(requiredPermissions: string[], 
 export function createAllPermissionsErrorResponse(requiredPermissions: string[], missingPermissions: string[], userPermissions: string[]) {
   return {
     success: false,
-    error: "Insufficient permissions",
+    msg: "Insufficient permissions",
     details: {
       required: requiredPermissions,
       missing: missingPermissions,

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Card,
   CardContent,
@@ -10,18 +11,26 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { UserCheck, Users, Loader2, AlertCircle } from "lucide-react";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import {
+  Users,
+  UserCheck,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
+import { toast } from "sonner";
 
 interface UnassignedUser {
   _id: string;
   fullName: string;
   userName: string;
   email: string;
-  avatarURL: string;
-  interestIn: Array<{ interest: string }>;
+  avatarURL?: string;
+  isActive: boolean;
+  posts: number;
+  followers: number;
+  following: number;
 }
 
 interface BulkUserAssignmentProps {
@@ -38,8 +47,7 @@ export function BulkUserAssignment({
   const [unassignedUsers, setUnassignedUsers] = useState<UnassignedUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [fetchingUsers, setFetchingUsers] = useState(false);
-  
-  const { loading, get, post } = useApi();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchUnassignedUsers();
@@ -48,9 +56,9 @@ export function BulkUserAssignment({
   const fetchUnassignedUsers = async () => {
     setFetchingUsers(true);
     try {
-      const result = await get("/api/users/unassigned", TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setUnassignedUsers(result.data);
+      const data = await handleAPICall("/api/users/unassigned", methodENUM.GET);
+      if (data) {
+        setUnassignedUsers(data);
       }
     } catch (error) {
       console.error("Error fetching unassigned users:", error);
@@ -80,24 +88,23 @@ export function BulkUserAssignment({
       return;
     }
 
+    setLoading(true);
     try {
       // Assign each selected user to the admin
       const assignPromises = selectedUsers.map(userId =>
-        post("/api/users/assign", {
+        handleAPICall("/api/users/assign", methodENUM.POST, {
           userId,
           adminUserId,
-        }, TOAST_CONFIGS.silent) // Use silent to avoid multiple toasts
+        })
       );
 
       const results = await Promise.all(assignPromises);
-      const failedAssignments = results.filter(result => !result.success);
-      const successfulAssignments = results.filter(result => result.success);
+      const failedAssignments = results.filter(result => !result);
+      const successfulAssignments = results.filter(result => result);
 
       if (failedAssignments.length === 0) {
         // Show success toast for bulk operation
         const successMessage = `Successfully assigned ${successfulAssignments.length} users to ${adminUserName}`;
-        // We'll use the toast directly here since we used silent config
-        const { toast } = await import('sonner');
         toast.success(successMessage);
         
         setSelectedUsers([]);
@@ -108,14 +115,7 @@ export function BulkUserAssignment({
           ? "Failed to assign any users" 
           : `Failed to assign ${failedAssignments.length} out of ${results.length} users`;
         
-        // Show error toast for bulk operation
-        const { toast } = await import('sonner');
         toast.error(errorMessage);
-        
-        // Log detailed errors for debugging
-        failedAssignments.forEach(failure => {
-          console.error(`Failed to assign user:`, failure.error);
-        });
         
         // Still refresh the list to show successful assignments
         if (successfulAssignments.length > 0) {
@@ -124,8 +124,9 @@ export function BulkUserAssignment({
       }
     } catch (error) {
       console.error("Error bulk assigning users:", error);
-      const { toast } = await import('sonner');
       toast.error("Failed to assign users");
+    } finally {
+      setLoading(false);
     }
   };
 

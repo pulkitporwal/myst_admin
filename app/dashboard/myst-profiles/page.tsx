@@ -12,8 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Users, UserCheck, ExternalLink } from "lucide-react";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -25,20 +24,18 @@ export default function MystProfilesPage() {
     activeUsers: 0,
   });
 
-  const { get } = useApi();
-
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const result = await get("/api/users/assigned", TOAST_CONFIGS.fetch);
-        if (result.success && result.data) {
-          setUserData(result.data);
+        const data = await handleAPICall("/api/users/assigned", methodENUM.GET);
+        if (data) {
+          setUserData(data);
 
           // Calculate stats
           setStats({
-            totalAssigned: result.data?.length || 0,
+            totalAssigned: data?.length || 0,
             activeUsers:
-              result.data?.filter((user: UserType) => user.isActive).length ||
+              data?.filter((user: UserType) => user.isActive).length ||
               0,
           });
         }

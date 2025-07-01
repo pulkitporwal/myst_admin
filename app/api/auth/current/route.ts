@@ -12,7 +12,6 @@ export async function GET() {
       );
     }
 
-    // Return user data without sensitive information
     const userData = {
       _id: currentUser._id,
       fullName: currentUser.fullName,
@@ -24,7 +23,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      user: userData,
+      data: userData,
     });
   } catch (error) {
     console.error("Error fetching current user:", error);

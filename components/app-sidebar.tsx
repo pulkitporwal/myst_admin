@@ -37,6 +37,8 @@ import {
 } from "./ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
+import { signOut } from "next-auth/react";
 
 export default function AppSidebar() {
   const menuItems = [
@@ -86,11 +88,6 @@ export default function AppSidebar() {
       url: "/dashboard/pending-applications",
       icon: Clock,
       superAdminOnly: true,
-    },
-    {
-      title: "Settings",
-      url: "/dashboard/settings",
-      icon: Settings,
     },
   ];
   const pathname = usePathname();
@@ -152,14 +149,14 @@ export default function AppSidebar() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <span>Profile</span>
+                  <Link href={"/account"}>Profile</Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem>
-                  <span>Settings</span>
+                  <Link href={"/settings"}>Settings</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem>
-                  <span>Sign out</span>
+                  <span onClick={() => signOut()}>Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

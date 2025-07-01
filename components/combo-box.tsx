@@ -42,7 +42,10 @@ const ComboBox = ({ data, comboBoxValue, setComboBoxValue }: ComboBoxProps) => {
         </PopoverTrigger>
         <PopoverContent className="p-0 w-full">
           <Command className="w-full border">
-            <CommandInput className="w-full" placeholder="Search Permissions..." />
+            <CommandInput
+              className="w-full"
+              placeholder="Search Permissions..."
+            />
             <CommandList>
               <CommandEmpty>No data found.</CommandEmpty>
               <CommandGroup>
@@ -73,4 +76,4 @@ const ComboBox = ({ data, comboBoxValue, setComboBoxValue }: ComboBoxProps) => {
   );
 };
 
-export default ComboBox;
+export { ComboBox };

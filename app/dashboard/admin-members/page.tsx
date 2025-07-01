@@ -2,19 +2,20 @@
 import { useEffect, useState } from "react";
 import { AdminUserType } from "./columns";
 import { AdminUserTable } from "./data-table";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 export default function Page() {
   const [adminUserData, setAdminUserData] = useState<AdminUserType[]>([]);
   
-  const { get } = useApi();
-
   useEffect(() => {
     const fetchData = async () => {
-      const result = await get("/api/admin-users", TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setAdminUserData(result.data);
+      try {
+        const data = await handleAPICall("/api/admin-users", methodENUM.GET);
+        if (data) {
+          setAdminUserData(data);
+        }
+      } catch (error) {
+        console.error("Error fetching admin users:", error);
       }
     };
 

@@ -34,6 +34,7 @@ export type UserType = {
     role: string;
   } | null;
   createdAt: string;
+  referralCode: string;
 };
 
 // Create a function that returns columns based on showAssignButton prop

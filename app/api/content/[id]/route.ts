@@ -12,6 +12,7 @@ import {
   logActivity,
 } from "@/lib/activityLogger";
 import { InterestModel } from "@/models/Interests";
+import { getCurrentUserWithPermissions } from "@/lib/getCurrentUserWithPermissions";
 
 export async function GET(
   request: Request,
@@ -20,25 +21,43 @@ export async function GET(
   try {
     await dbConnect();
 
-    // Permission check - CONTENT_VIEW or SUPER_ADMIN
-    const permissionCheck = await checkAnyPermission([
-      "CONTENT_VIEW",
-      "SUPER_ADMIN",
-    ]);
-    if (!permissionCheck.hasPermission) {
+    // Get current user
+    const currentUser = await getCurrentUserWithPermissions();
+    if (!currentUser) {
       return NextResponse.json(
-        createAnyPermissionErrorResponse(
-          ["CONTENT_VIEW", "SUPER_ADMIN"],
-          permissionCheck.permissions
-        ),
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Only super-admin, admin, manager allowed
+    if (!["super-admin", "admin", "manager"].includes(currentUser.role)) {
+      return NextResponse.json(
+        { success: false, error: "Access denied" },
         { status: 403 }
       );
     }
-    InterestModel.modelName;
+
+    // Super-admin skips permission checks
+    if (currentUser.role !== "super-admin") {
+      const permissionCheck = await checkAnyPermission(["CONTENT_VIEW"]);
+      if (!permissionCheck.hasPermission) {
+        return NextResponse.json(
+          createAnyPermissionErrorResponse(["CONTENT_VIEW"], permissionCheck.permissions),
+          { status: 403 }
+        );
+      }
+    }
+
     const { id } = await params;
+
+    // Find content
     const content = await ContentModel.findById(id)
-      .populate("user_id", "fullName userName avatarURL")
+      .populate("user_id", "fullName userName avatarURL assignedTo")
       .populate("category", "interest description");
+
+      console.log(content)
+
     if (!content) {
       return NextResponse.json(
         { success: false, error: "Content not found" },
@@ -46,16 +65,33 @@ export async function GET(
       );
     }
 
+    // Manager-specific check: can only view content assigned to themselves
+    if (currentUser.role === "manager") {
+      const assignedToId = content.user_id?.assignedTo?.toString();
+      if (assignedToId !== currentUser._id.toString()) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Managers can only view content of users assigned to them."
+          },
+          { status: 403 }
+        );
+      }
+    }
+
     // Log activity
     await logActivity({
-      userId: permissionCheck.user._id.toString(),
+      userId: currentUser._id.toString(),
       activityType: ActivityTypes.ACTIVITY_VIEWED,
       description: `Viewed content details: ${content.title || content._id}`,
       metadata: { contentId: content._id },
       ...getClientInfo(request),
     });
 
-    return NextResponse.json({ success: true, data: content }, { status: 200 });
+    return NextResponse.json(
+      { success: true, data: content },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error fetching content:", error);
     return NextResponse.json(
@@ -64,6 +100,7 @@ export async function GET(
     );
   }
 }
+
 
 export async function PUT(
   request: Request,

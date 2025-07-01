@@ -4,20 +4,21 @@ import { useEffect, useState } from "react";
 import { UserType } from "./columns";
 import { UserTable } from "./data-table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { CreateUserDialog } from "@/components/create-user-dialog";
 
 export default function Page() {
   const [userData, setUserData] = useState<UserType[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
-  const { get } = useApi();
-
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const result = await get("/api/users", TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
-        setUserData(result.data);
+      const data = await handleAPICall("/api/users", methodENUM.GET);
+      if (data) {
+        setUserData(data);
       }
     } catch (error) {
       console.error("Error fetching users:", error);
@@ -47,7 +48,10 @@ export default function Page() {
 
   return (
     <div className="p-4 w-full h-full">
-      <h1 className="text-xl font-semibold mb-4">Users</h1>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-xl font-semibold">Users</h1>
+        <CreateUserDialog onUserCreated={fetchData} />
+      </div>
 
       {loading ? (
         <div className="space-y-4">

@@ -7,7 +7,7 @@ export enum CONTENT_TYPE {
 
 export interface ContentDocument extends Document {
   user_id: Types.ObjectId;
-  content_url: string;
+  content_url: [string];
   thumbnail_url?: string;
   caption?: string;
   category?: Types.ObjectId[];
@@ -71,7 +71,7 @@ const contentSchema = new Schema<ContentDocument>(
       required: true,
     },
     content_url: {
-      type: String,
+      type: [String],
       required: true,
     },
     thumbnail_url: {

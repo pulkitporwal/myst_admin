@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ArrowUpDown, Check, X } from "lucide-react";
 import { Types } from "mongoose"; // Only if needed
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 
 export type CONTENT_TYPE = "image" | "video";
 
@@ -15,6 +16,7 @@ export type ContentType = {
     userName: string;
     avatarURL?: string;
   };
+  _id: string;
   content_url: string;
   thumbnail_url?: string;
   caption?: string;
@@ -40,16 +42,16 @@ export const columns: ColumnDef<ContentType>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const user = row.original.user_id;
+      const user_id = row.original.user_id;
 
-      const hasAvatar = user?.avatarURL && user.avatarURL.trim() !== "";
+      const hasAvatar = user_id?.avatarURL && user_id.avatarURL.trim() !== "";
 
       return (
         <div className="flex items-center gap-2">
           {hasAvatar ? (
             <img
-              src={user.avatarURL}
-              alt={user.fullName}
+              src={user_id?.avatarURL}
+              alt={user_id?.fullName}
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
@@ -58,8 +60,8 @@ export const columns: ColumnDef<ContentType>[] = [
             </div>
           )}
           <div>
-            <div className="font-medium">{user.fullName}</div>
-            <div className="text-sm text-gray-500">@{user.userName}</div>
+            <div className="font-medium">{user_id?.fullName}</div>
+            <div className="text-sm text-gray-500">@{user_id?.userName}</div>
           </div>
         </div>
       );
@@ -78,14 +80,14 @@ export const columns: ColumnDef<ContentType>[] = [
       </Button>
     ),
     cell: ({ row }) => (
-      <a
-        href={row.original.content_url}
+      <Link
+        href={row.original?.content_url[0]}
         target="_blank"
         rel="noopener noreferrer"
         className="text-blue-600 underline"
       >
         View
-      </a>
+      </Link>
     ),
   },
   {
@@ -122,7 +124,7 @@ export const columns: ColumnDef<ContentType>[] = [
     cell: ({ row }) =>
       row.original.category?.length ? (
         <div className="flex flex-wrap gap-1">
-          {row.original.category.map((cat,i) => (
+          {row.original.category.map((cat, i) => (
             <span
               key={i}
               className="bg-muted text-muted-foreground px-2 py-0.5 rounded text-xs"
@@ -213,5 +215,16 @@ export const columns: ColumnDef<ContentType>[] = [
     ),
     cell: ({ row }) =>
       row.original.duration ? `${row.original.duration} sec` : "—",
+  },
+  {
+    id: "view",
+    header: "View",
+    cell: ({ row }) => {
+      const id = row.original?._id;
+      // Lazy import to avoid SSR issues
+      const ContentSheet = require("@/components/content-sheet").ContentSheet;
+      return <ContentSheet contentId={id} triggerLabel="View" />;
+    },
+    enableSorting: false,
   },
 ];

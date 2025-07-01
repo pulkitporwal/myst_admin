@@ -20,8 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { UserCheck, UserX, Loader2 } from "lucide-react";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 
 interface AdminUser {
   _id: string;
@@ -54,9 +53,8 @@ export function UserAssignmentDialog({
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedAdminUserId, setSelectedAdminUserId] = useState<string>("");
   const [fetchingAdmins, setFetchingAdmins] = useState(false);
+  const [loading, setLoading] = useState(false);
   
-  const { loading, get, post, del } = useApi();
-
   useEffect(() => {
     if (open) {
       fetchAdminUsers();
@@ -66,10 +64,10 @@ export function UserAssignmentDialog({
   const fetchAdminUsers = async () => {
     setFetchingAdmins(true);
     try {
-      const result = await get("/api/admin-users", TOAST_CONFIGS.fetch);
-      if (result.success && result.data) {
+      const data = await handleAPICall("/api/admin-users", methodENUM.GET);
+      if (data) {
         // Filter to only show managers and admins (not super-admin)
-        const filteredAdmins = result.data.filter((admin: AdminUser) => 
+        const filteredAdmins = data.filter((admin: AdminUser) => 
           ["admin", "manager"].includes(admin.role)
         );
         setAdminUsers(filteredAdmins);
@@ -86,29 +84,38 @@ export function UserAssignmentDialog({
       return;
     }
 
-    const result = await post("/api/users/assign", {
-      userId,
-      adminUserId: selectedAdminUserId,
-    }, {
-      ...TOAST_CONFIGS.assign,
-      successMessage: "User assigned successfully",
-      onSuccess: () => {
+    setLoading(true);
+    try {
+      const data = await handleAPICall("/api/users/assign", methodENUM.POST, {
+        userId,
+        adminUserId: selectedAdminUserId,
+      });
+      
+      if (data) {
         onAssignmentChange();
         setOpen(false);
         setSelectedAdminUserId("");
-      },
-    });
+      }
+    } catch (error) {
+      console.error("Error assigning user:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleUnassign = async () => {
-    const result = await del(`/api/users/assign?userId=${userId}`, {
-      ...TOAST_CONFIGS.unassign,
-      successMessage: "User assignment removed successfully",
-      onSuccess: () => {
+    setLoading(true);
+    try {
+      const data = await handleAPICall(`/api/users/assign?userId=${userId}`, methodENUM.DELETE);
+      if (data) {
         onAssignmentChange();
         setOpen(false);
-      },
-    });
+      }
+    } catch (error) {
+      console.error("Error unassigning user:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

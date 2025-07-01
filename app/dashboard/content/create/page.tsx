@@ -2,14 +2,25 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, User, Users } from "lucide-react";
 import { ContentUpload } from "@/components/content-upload";
-import { useApi } from "@/hooks/use-api";
-import { TOAST_CONFIGS } from "@/lib/api-utils";
+import { handleAPICall, methodENUM } from "@/lib/api-utils";
 import { toast } from "sonner";
 
 interface User {
@@ -22,7 +33,6 @@ interface User {
 
 export default function CreateContentPage() {
   const router = useRouter();
-  const { get } = useApi();
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -30,9 +40,9 @@ export default function CreateContentPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const result = await get("/api/users", TOAST_CONFIGS.silent);
-        if (result.success && result.data) {
-          setUsers(result.data);
+        const data = await handleAPICall("/api/users", methodENUM.GET);
+        if (data) {
+          setUsers(data);
         }
       } catch (error) {
         console.error("Error fetching users:", error);
@@ -43,25 +53,14 @@ export default function CreateContentPage() {
     };
 
     fetchUsers();
-  }, [get]);
+  }, []);
 
   const handleUploadSuccess = async (contentData: any) => {
     try {
-      const response = await fetch("/api/content", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(contentData),
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        toast.success("Content created successfully!");
+      const data = await handleAPICall("/api/content", methodENUM.POST, contentData);
+      if (data) {
+        // toast.success("Content created successfully!");
         router.push("/dashboard/content");
-      } else {
-        toast.error(result.error || "Failed to create content");
       }
     } catch (error) {
       console.error("Error creating content:", error);
@@ -89,11 +88,7 @@ export default function CreateContentPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => router.back()}
-          >
+          <Button variant="outline" size="sm" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
@@ -121,15 +116,12 @@ export default function CreateContentPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">User Profile</label>
-              <Select
-                value={selectedUserId}
-                onValueChange={setSelectedUserId}
-              >
+              <Select value={selectedUserId} onValueChange={setSelectedUserId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a user profile" />
                 </SelectTrigger>
                 <SelectContent>
-                  {users.map((user) => (
+                  {users?.map((user) => (
                     <SelectItem key={user._id} value={user._id}>
                       <div className="flex items-center gap-2">
                         <span>{user.fullName}</span>
@@ -149,10 +141,10 @@ export default function CreateContentPage() {
                   </div>
                   <div>
                     <p className="font-medium">
-                      {users.find(u => u._id === selectedUserId)?.fullName}
+                      {users.find((u) => u._id === selectedUserId)?.fullName}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      @{users.find(u => u._id === selectedUserId)?.userName}
+                      @{users.find((u) => u._id === selectedUserId)?.userName}
                     </p>
                   </div>
                 </div>
@@ -182,4 +174,4 @@ export default function CreateContentPage() {
       )}
     </div>
   );
-} 
+}

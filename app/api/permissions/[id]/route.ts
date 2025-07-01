@@ -114,6 +114,8 @@ export async function DELETE(
 
     // Permission check - USER_DELETE or SUPER_ADMIN
     const permissionCheck = await checkAnyPermission(["USER_DELETE", "SUPER_ADMIN"]);
+
+    console.log(permissionCheck)
     if (!permissionCheck.hasPermission) {
       return NextResponse.json(
         createAnyPermissionErrorResponse(["USER_DELETE", "SUPER_ADMIN"], permissionCheck.permissions),
